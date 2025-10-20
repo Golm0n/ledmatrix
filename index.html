@@ -1,199 +1,259 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Missing Light — jeu matrice LED</title>
-  <style>
-    :root{--bg:#0f1724;--accent:#60a5fa;--ok:#10b981;--bad:#ef4444;--muted:#94a3b8;--cell-size:24px}
-    *{box-sizing:border-box;font-family:Inter,system-ui,Arial,sans-serif}
-    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071025 0%,#081226 100%);color:#e6eef6;display:flex;justify-content:center;align-items:center}
-    .wrap{max-width:900px;width:100%;padding:20px;text-align:center}
-    h1{margin-bottom:6px;font-size:22px}
-    .matrix{display:grid;gap:3px;justify-content:center;margin:20px auto;width:fit-content}
-    .cell{width:var(--cell-size);height:var(--cell-size);border-radius:6px;background:rgba(255,255,255,0.05);cursor:pointer;transition:background .15s,box-shadow .15s}
-    .cell.on{background:var(--accent);box-shadow:0 0 8px rgba(96,165,250,0.6)}
-    .cell.correct{background:var(--ok);box-shadow:0 0 8px rgba(16,185,129,0.6)}
-    .cell.wrong{background:var(--bad);box-shadow:0 0 8px rgba(239,68,68,0.6)}
-    .hud{display:flex;justify-content:center;align-items:center;gap:12px;font-size:18px}
-    .heart{color:var(--bad);font-size:22px}
-    .heart.off{opacity:0.2}
-    .controls{margin-top:12px}
-    button{background:var(--accent);color:#04233b;border:none;padding:8px 14px;border-radius:10px;font-size:15px;cursor:pointer}
-    button.hidden{display:none}
-    .msg{margin-top:16px;font-size:18px}
-    select,input{background:transparent;border:1px solid rgba(255,255,255,0.1);color:#e6eef6;padding:6px 8px;border-radius:8px}
-    label{font-size:13px;color:var(--muted)}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LED Memory Game</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #111;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 40px;
+    padding: 20px;
+  }
+  #game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(30px, 6vh));
+    grid-template-rows: repeat(4, minmax(30px, 6vh));
+    gap: 6px;
+  }
+  .cell {
+    background: #222;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.25s;
+  }
+  .cell.on { background: #0f0; }
+  .cell.error { background: #f00; }
+  .controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #555;
+    transition: 0.4s;
+    border-radius: 34px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+  }
+  input:checked + .slider {
+    background-color: #2196F3;
+  }
+  input:checked + .slider:before {
+    transform: translateX(30px);
+  }
+  #info { max-width: 300px; line-height: 1.5em; }
+  #message { font-size: 1.2em; color: #0ff; height: 24px; text-align:center; }
+  #hearts span { color: red; font-size: 1.4em; }
+</style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Missing Light</h1>
-  <div class="hud">
-    <div id="hearts"></div>
-    <div id="score">Score: 0</div>
-  </div>
+<div id="container">
+<div id="game">
   <div class="controls">
-    <label>Taille de grille :</label>
-    <input id="gridSize" type="number" min="3" max="20" value="5" style="width:70px">&nbsp;
+    <label>Mode :</label>
+    <label class="switch">
+      <input type="checkbox" id="modeSwitch">
+      <span class="slider"></span>
+    </label>
+    <span id="modeLabel">Missing Light</span>
     <button id="startBtn">Démarrer</button>
-    <button id="retryBtn" class="hidden">Rejouer</button>
   </div>
-  <div id="matrix" class="matrix"></div>
-  <div id="msg" class="msg"></div>
+  <div id="hearts">❤️❤️❤️</div>
+  <div id="message"></div>
+  <div class="grid" id="grid"></div>
+  <div id="score">Score : 0</div>
 </div>
-
+<div id="info">
+  <h3>Instructions</h3>
+  <p>Choisis le mode de jeu :</p>
+  <ul>
+    <li><b>Missing Light</b> : trouve la LED qui ne s'est jamais allumée.</li>
+    <li><b>LED Double</b> : trouve la LED qui s'est allumée deux fois.</li>
+  </ul>
+  <p>Observe la séquence, puis clique sur la LED correcte.<br>
+  - 1ère bonne réponse : +3 points<br>
+  - Après relecture : +1 point<br>
+  - 3 erreurs = fin du jeu</p>
+</div>
+</div>
 <script>
-(function(){
-  const matrixEl = document.getElementById('matrix');
-  const startBtn = document.getElementById('startBtn');
-  const retryBtn = document.getElementById('retryBtn');
-  const msgEl = document.getElementById('msg');
-  const heartsEl = document.getElementById('hearts');
-  const scoreEl = document.getElementById('score');
-  const gridSizeEl = document.getElementById('gridSize');
+const grid = document.getElementById('grid');
+const startBtn = document.getElementById('startBtn');
+const modeSwitch = document.getElementById('modeSwitch');
+const modeLabel = document.getElementById('modeLabel');
+const message = document.getElementById('message');
+const scoreDisplay = document.getElementById('score');
+const heartsDisplay = document.getElementById('hearts');
 
-  let size = 10, num = 100, cells = [];
-  let currentSeq = null;
-  let phase = 'idle';
-  let lives = 3, score = 0;
-  let difficulty = 1;
+let size = 4;
+let lives = 3;
+let score = 0;
+let currentMode = 'missing';
+let sequence1 = [], sequence2 = [];
+let correctIndex = null;
+let canClick = false;
+let alreadyReplayed = false;
 
-  function buildGrid(n){
-    size = n; num = n*n;
-    matrixEl.innerHTML = '';
-    matrixEl.style.gridTemplateColumns = `repeat(${n},1fr)`;
-    const cellSize = Math.max(10, 300 / n);
-    matrixEl.style.setProperty('--cell-size', `${cellSize}px`);
-    cells = [];
-    for(let i=0;i<num;i++){
-      const d = document.createElement('div');
-      d.className = 'cell';
-      d.addEventListener('click', ()=>{
-        if(phase==='guess') handleGuess(i);
-      });
-      matrixEl.appendChild(d);
-      cells.push(d);
-    }
+function createGrid() {
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${size}, minmax(30px, 6vh))`;
+  grid.style.gridTemplateRows = `repeat(${size}, minmax(30px, 6vh))`;
+  for (let i = 0; i < size * size; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.addEventListener('click', () => handleClick(i, cell));
+    grid.appendChild(cell);
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+async function flashCells(indices, time = 1000) {
+  indices.forEach(i => grid.children[i].classList.add('on'));
+  await sleep(time);
+  indices.forEach(i => grid.children[i].classList.remove('on'));
+}
+
+async function playSequence() {
+  canClick = false;
+  message.textContent = 'Observation...';
+  const total = size * size;
+  const allIndices = [...Array(total).keys()];
+  const half = Math.floor(total / 2);
+
+  // première vague : moitié des leds aléatoires
+  sequence1 = shuffle([...allIndices]).slice(0, half);
+
+  if (currentMode === 'missing') {
+    // deuxième vague : moitié - 1 leds non utilisées dans la première vague
+    const remaining = allIndices.filter(i => !sequence1.includes(i));
+    sequence2 = shuffle([...remaining]).slice(0, half - 1);
+    // la LED manquante
+    correctIndex = remaining.find(i => !sequence2.includes(i));
+  } else {
+    // mode double : moitié - 1 leds différentes + une répétée de la première vague
+    const remaining = allIndices.filter(i => !sequence1.includes(i));
+    sequence2 = shuffle([...remaining]).slice(0, half - 1);
+    const dup = sequence1[Math.floor(Math.random() * sequence1.length)];
+    sequence2.push(dup);
+    correctIndex = dup;
   }
 
-  function renderHearts(){
-    heartsEl.innerHTML='';
-    for(let i=0;i<3;i++){
-      const span=document.createElement('span');
-      span.textContent='❤';
-      span.className='heart'+(i>=lives?' off':'');
-      heartsEl.appendChild(span);
-    }
-  }
+  await flashCells(sequence1, 1200);
+  await sleep(300);
+  await flashCells(sequence2, 1200);
 
-  function randInt(n){return Math.floor(Math.random()*n)}
+  message.textContent = 'Clique sur la LED correcte';
+  canClick = true;
+}
 
-  function genSequence(){
-    const mode = (difficulty % 2 === 1) ? 'missing' : 'duplicate';
-    const waves = Math.min(2 + Math.floor(difficulty/2), 5);
-    const allIdx = Array.from({length:num},(_,i)=>i);
-    let outWaves=[]; let target;
-
-    if(mode==='missing'){
-      const shuffled=[...allIdx].sort(()=>Math.random()-0.5);
-      target = shuffled.pop();
-      let chunkSize=Math.floor(shuffled.length/waves);
-      for(let w=0;w<waves;w++) outWaves.push(shuffled.slice(w*chunkSize,(w+1)*chunkSize));
+async function handleClick(i, cell) {
+  if (!canClick) return;
+  if (i === correctIndex) {
+    const pts = alreadyReplayed ? 1 : 3;
+    score += pts;
+    scoreDisplay.textContent = `Score : ${score}`;
+    message.textContent = `Correct ! (+${pts})`;
+    await sleep(800);
+    alreadyReplayed = false;
+    playSequence();
+  } else {
+    if (!alreadyReplayed) {
+      message.textContent = 'ERREUR, re-regardez bien la séquence';
+      canClick = false;
+      await sleep(4000);
+      alreadyReplayed = true;
+      playSequence();
     } else {
-      target=randInt(num);
-      for(let w=0;w<waves;w++) outWaves.push([]);
-      let w1=randInt(waves), w2=(w1+1)%waves;
-      outWaves[w1].push(target); outWaves[w2].push(target);
-      let pool=allIdx.filter(i=>i!==target).sort(()=>Math.random()-0.5);
-      let p=0;
-      for(let w=0;w<waves;w++){
-        let count=Math.floor(num/(waves*1.5));
-        for(let j=0;j<count && p<pool.length;j++) outWaves[w].push(pool[p++]);
+      cell.classList.add('error');
+      await sleep(600);
+      cell.classList.remove('error');
+      grid.children[correctIndex].classList.add('on');
+      await sleep(1000);
+      grid.children[correctIndex].classList.remove('on');
+      lives--;
+      heartsDisplay.textContent = '❤️'.repeat(lives);
+      if (lives <= 0) {
+        message.textContent = `Perdu ! Score final : ${score}`;
+        startBtn.disabled = false;
+        modeSwitch.disabled = false;
+        return;
       }
-    }
-    return {waves:outWaves,target,mode};
-  }
-
-  function clearCells(){cells.forEach(c=>c.className='cell');}
-
-  async function playSequence(seq){
-    phase='show';
-    msgEl.textContent='Observe...';
-    clearCells();
-    let baseDur=1200 - difficulty*100;
-    let dur=Math.max(400,baseDur);
-    for(const wave of seq.waves){
-      wave.forEach(i=>cells[i].classList.add('on'));
-      await sleep(dur);
-      wave.forEach(i=>cells[i].classList.remove('on'));
-      await sleep(150);
-    }
-    phase='guess';
-    msgEl.textContent=(seq.mode==='missing'?'Trouve la LED manquante':'Trouve la LED allumée deux fois');
-  }
-
-  function handleGuess(i){
-    if(!currentSeq) return;
-    if(i===currentSeq.target){
-      cells[i].classList.add('correct');
-      msgEl.textContent='Correct !';
-      score++; scoreEl.textContent='Score: '+score;
-      difficulty++;
-      setTimeout(startRound,800);
-    }else{
-      cells[i].classList.add('wrong');
-      cells[currentSeq.target].classList.add('correct');
-      lives--; renderHearts();
-      if(lives>0){
-        msgEl.textContent='Raté ! Retente...';
-        setTimeout(()=>playSequence(currentSeq),1000);
-      }else{
-        gameOver();
-      }
+      alreadyReplayed = false;
+      playSequence();
     }
   }
+}
 
-  function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+modeSwitch.addEventListener('change', () => {
+  currentMode = modeSwitch.checked ? 'double' : 'missing';
+  modeLabel.textContent = modeSwitch.checked ? 'LED Double' : 'Missing Light';
+});
 
-  function startRound(){
-    if(lives<=0) return;
-    clearCells();
-    currentSeq=genSequence();
-    playSequence(currentSeq);
-  }
+startBtn.addEventListener('click', () => {
+  lives = 3;
+  score = 0;
+  scoreDisplay.textContent = 'Score : 0';
+  heartsDisplay.textContent = '❤️❤️❤️';
+  modeSwitch.disabled = true;
+  startBtn.disabled = true;
+  message.textContent = '';
+  playSequence();
+});
 
-  function startGame(){
-    lives=3; score=0; difficulty=1;
-    scoreEl.textContent='Score: 0';
-    renderHearts();
-    msgEl.textContent='';
-    retryBtn.classList.add('hidden');
-    startBtn.disabled=true;
-    startRound();
-  }
-
-  function gameOver(){
-    msgEl.textContent='Perdu ! Ton score : '+score;
-    retryBtn.classList.remove('hidden');
-    startBtn.disabled=false;
-  }
-
-  startBtn.addEventListener('click',()=>{
-    buildGrid(parseInt(gridSizeEl.value,10));
-    startGame();
-  });
-  retryBtn.addEventListener('click',()=>{
-    buildGrid(parseInt(gridSizeEl.value,10));
-    startGame();
-  });
-
-  function init(){
-    buildGrid(size);
-    renderHearts();
-  }
-  init();
-})();
+createGrid();
 </script>
 </body>
 </html>
